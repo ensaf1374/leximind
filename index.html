@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1217" media="(prefers-color-scheme: dark)">
+<meta name="description" content="LexiMind — learn English vocabulary with spaced repetition, speaking practice and AI, built for Farsi speakers.">
+<title>LexiMind</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<script>
+  // theme before first paint
+  (function(){ try{ var t=localStorage.getItem('lm:theme'); if(t==='dark'||(t==null&&matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark'); }catch(e){} })();
+</script>
+</head>
+<body>
+
+<!-- ───────── Auth screen (shown until signed in or continuing as guest) ───────── -->
+<section id="auth" class="auth" hidden>
+  <div class="auth-panel">
+    <form id="auth-form" class="auth-form" novalidate>
+      <div class="brand auth-brand"><span class="brand-mark">Lx</span> LexiMind</div>
+      <h2 id="auth-heading">Welcome back</h2>
+      <p class="muted" id="auth-lead">Sign in to sync your progress across devices.</p>
+      <button type="button" class="btn btn-google" id="auth-google" hidden>
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.6A14.6 14.6 0 0 1 9.5 24c0-1.6.3-3.2.8-4.6l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.4 0 11.9-2.1 15.8-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.9l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+        Continue with Google
+      </button>
+      <div class="or" id="auth-or" hidden><span>or</span></div>
+      <label class="field" id="auth-name-field" hidden>
+        <span>Your name</span>
+        <input type="text" id="auth-name" autocomplete="name" placeholder="How should we call you?">
+      </label>
+      <label class="field">
+        <span>Email</span>
+        <input type="email" id="auth-email" autocomplete="email" required placeholder="you@example.com">
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input type="password" id="auth-password" autocomplete="current-password" minlength="8" required placeholder="At least 8 characters">
+      </label>
+      <p class="auth-error" id="auth-error" role="alert" hidden></p>
+      <button type="submit" class="btn btn-primary btn-block" id="auth-submit">Sign in</button>
+      <p class="auth-switch">
+        <span id="auth-switch-text">New here?</span>
+        <button type="button" class="link" id="auth-switch">Create an account</button>
+        <span class="dot">·</span>
+        <button type="button" class="link" id="auth-forgot">Forgot password</button>
+      </p>
+      <p class="auth-guest">
+        <button type="button" class="link" id="auth-guest">Try it without an account</button>
+        <small>Progress stays on this device only.</small>
+      </p>
+    </form>
+    <p class="auth-config-warning" id="auth-config-warning" hidden>Cloud sign-in isn't configured yet. Open <code>js/config.js</code> and add your Supabase URL and anon key — or continue as a guest.</p>
+  </div>
+</section>
+
+<!-- ───────── App shell ───────── -->
+<div id="app" class="app" hidden>
+  <nav class="sidebar" id="sidebar" aria-label="Main">
+    <a class="brand" href="#/home"><span class="brand-mark">Lx</span> LexiMind</a>
+    <ul class="nav">
+      <li><a href="#/home" data-nav="home"><i data-ico="home"></i>Home</a></li>
+      <li><a href="#/study" data-nav="study"><i data-ico="cards"></i>Study</a></li>
+      <li><a href="#/library" data-nav="library"><i data-ico="library"></i>Decks</a></li>
+      <li class="nav-label">Practice</li>
+      <li><a href="#/speak" data-nav="speak"><i data-ico="mic"></i>Speak &amp; listen</a></li>
+      <li><a href="#/read" data-nav="read"><i data-ico="book"></i>Read</a></li>
+      <li><a href="#/watch" data-nav="watch"><i data-ico="video"></i>Watch</a></li>
+      <li><a href="#/generate" data-nav="generate"><i data-ico="plus"></i>Generate</a></li>
+      <li><a href="#/games" data-nav="games"><i data-ico="grid"></i>Games</a></li>
+      <li class="nav-label">You</li>
+      <li><a href="#/calendar" data-nav="calendar"><i data-ico="calendar"></i>Calendar</a></li>
+      <li><a href="#/progress" data-nav="progress"><i data-ico="chart"></i>Progress</a></li>
+      <li><a href="#/community" data-nav="community"><i data-ico="globe"></i>Community</a></li>
+    </ul>
+    <div class="sidebar-foot">
+      <a href="#/settings" data-nav="settings" class="user-chip" id="user-chip">
+        <span class="avatar" id="user-avatar">?</span>
+        <span class="user-meta"><b id="user-name">Guest</b><small id="user-level">Level 1</small></span>
+      </a>
+      <div class="sync" id="sync-pill" title="Sync status"><span class="sync-dot"></span><span id="sync-text">Local</span></div>
+    </div>
+  </nav>
+
+  <main class="main" id="main" tabindex="-1"></main>
+
+  <nav class="tabbar" aria-label="Main (mobile)">
+    <a href="#/home" data-nav="home"><i data-ico="home"></i><span>Home</span></a>
+    <a href="#/study" data-nav="study"><i data-ico="cards"></i><span>Study</span></a>
+    <a href="#/speak" data-nav="speak"><i data-ico="mic"></i><span>Speak</span></a>
+    <a href="#/library" data-nav="library"><i data-ico="library"></i><span>Decks</span></a>
+    <a href="#/more" data-nav="more"><i data-ico="dots"></i><span>More</span></a>
+  </nav>
+</div>
+
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+<div id="offline-bar" class="offline-bar" hidden>You're offline — studying works, AI features and sync will resume when you're back.</div>
+
+<script src="js/config.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

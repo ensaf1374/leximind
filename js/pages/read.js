@@ -1,7 +1,7 @@
 // Read: passages to read and listen to, with every word one tap away.
 // A passage comes from one of three places: AI writes it on a topic, AI writes it around the learner's own
 // words, or the learner pastes any text (that last one needs no AI at all).
-import { html, raw, esc, $, toast, confirmDialog, ico } from '../lib/ui.js';
+import { html, raw, esc, $, toast, confirmDialog, promptDialog, ico } from '../lib/ui.js';
 import { S, save, uid, newCard, recordNewWords, SETTINGS, saveSettings, allCards, isDue, today, logActivity } from '../lib/store.js';
 import { ask, parseJSON, lookupWord, aiAvailable, aiHint, LEVELS } from '../lib/ai.js';
 import { speak, stopSpeaking } from '../lib/speech.js';
@@ -418,7 +418,8 @@ document.addEventListener('pointerdown', e => { const t = e.target; if (!t?.clos
 function drawSaved() {
   const el = $('#rd-saved'); if (!el) return;
   if (!S.readings.length) { el.innerHTML = '<div class="empty" style="padding:24px"><p>Readings you save appear here, with your quiz result, so you can come back to them.</p></div>'; return; }
-  el.innerHTML = `<div class="wl">${S.readings.map((r, i) => `<div class="wi"><div class="t"><b>${esc(r.title)}${r.part ? ` — part ${Number(r.part) || ''}` : ''}</b><small>${esc(r.level || '')} · ${new Date(r.created).toLocaleDateString()} · ${plural((r.paragraphs || []).length, 'paragraph')}${r.quizResult ? ` · quiz ${Number(r.quizResult.score) || 0}/${Number(r.quizResult.total) || 0}` : ''}</small></div><div class="acts"><button class="btn btn-sm" data-open="${i}">Open</button><button class="icon-btn danger" data-del="${i}" title="Delete" aria-label="Delete">${ico('trash')}</button></div></div>`).join('')}</div>`;
+  el.innerHTML = `<div class="wl">${S.readings.map((r, i) => `<div class="wi"><div class="t"><b>${esc(r.title)}${r.part ? ` — part ${Number(r.part) || ''}` : ''}</b><small>${esc(r.level || '')} · ${new Date(r.created).toLocaleDateString()} · ${plural((r.paragraphs || []).length, 'paragraph')}${r.quizResult ? ` · quiz ${Number(r.quizResult.score) || 0}/${Number(r.quizResult.total) || 0}` : ''}</small></div><div class="acts"><button class="btn btn-sm" data-open="${i}">Open</button><button class="icon-btn" data-ren="${i}" title="Rename" aria-label="Rename">${ico('edit')}</button><button class="icon-btn danger" data-del="${i}" title="Delete" aria-label="Delete">${ico('trash')}</button></div></div>`).join('')}</div>`;
+  el.querySelectorAll('[data-ren]').forEach(b => b.onclick = async () => { const r = S.readings[+b.dataset.ren]; const n = await promptDialog('Rename reading', { label: 'Title', value: r.title, okLabel: 'Rename' }); if (n && n !== r.title) { r.title = n.slice(0, 120); save(); toast('Renamed', 'ok'); drawSaved(); if (R === r) drawReading(); } });
   el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { R = S.readings[+b.dataset.open]; curTab = 'vocab'; drawReading(); $('#rd-out').scrollIntoView({ behavior: 'smooth' }); });
   el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { const r = S.readings[+b.dataset.del]; if (await confirmDialog('Delete reading?', `“${r.title}” will be removed.`, { danger: true, okLabel: 'Delete' })) { S.readings = S.readings.filter(x => x !== r); save(); drawSaved(); if (R === r) drawReading(); } });
 }

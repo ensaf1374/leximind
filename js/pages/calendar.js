@@ -71,7 +71,7 @@ function drawDay(main, page) {
   if (h?.spoken) rows.push(`<div class="item"><span class="ic">${ico('mic')}</span><div class="t"><b>Speaking practice</b><small>${plural(h.spoken, 'attempt')}</small></div></div>`);
   for (const a of list) {
     const k = KIND[a.kind] || KIND.note;
-    rows.push(`<div class="item"><span class="ic">${ico(k.icon)}</span><div class="t"><b style="white-space:normal">${esc(a.title)}</b><small>${esc(k.label)}${a.detail ? ` · ${esc(a.detail)}` : ''}</small></div><button class="icon-btn danger" data-rm="${esc(a.id)}" title="Remove from calendar" aria-label="Remove from calendar">${ico('x')}</button></div>`);
+    rows.push(`<div class="item"><span class="ic">${ico(k.icon)}</span><div class="t"><b style="white-space:normal">${esc(a.title)}</b><small>${esc(k.label)}${a.detail ? ` · ${esc(a.detail)}` : ''}</small></div><button class="icon-btn" data-ed="${esc(a.id)}" title="Rename" aria-label="Rename">${ico('edit')}</button><button class="icon-btn danger" data-rm="${esc(a.id)}" title="Remove from calendar" aria-label="Remove from calendar">${ico('x')}</button></div>`);
   }
   el.innerHTML = `<div class="row between" style="margin-bottom:12px;align-items:flex-start"><div><h3 style="margin:0">${esc(d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}</h3><p class="small muted">${sel === t ? 'Today' : sel > t ? 'Coming up' : `${rows.length ? plural(rows.length, 'item') : 'Nothing'} recorded`}</p></div><button class="btn btn-sm" id="cal-add">${ico('plus')} Add entry</button></div>
     ${rows.length ? `<div class="list" style="box-shadow:none">${rows.join('')}</div>` : `<div class="empty" style="padding:28px 16px"><p>${sel > t ? 'Nothing planned yet. Add an entry to remind yourself what to study.' : sel === t ? 'Nothing yet today. Study a few cards and they will show up here.' : 'Nothing was recorded on this day.'}</p>${sel === t ? '<a class="btn btn-primary" href="#/study">Go to Study</a>' : ''}</div>`}`;
@@ -80,5 +80,6 @@ function drawDay(main, page) {
     if (!text) return;
     logActivity({ kind: 'note', title: text.slice(0, 140), date: sel, merge: false }); toast('Added to your calendar', 'ok'); page.render(main);
   };
+  el.querySelectorAll('[data-ed]').forEach(b => b.onclick = async () => { const a = (S.activity || []).find(x => x.id === b.dataset.ed); if (!a) return; const n = await promptDialog('Rename entry', { label: 'Text', value: a.title, okLabel: 'Save' }); if (n && n !== a.title) { a.title = n.slice(0, 140); save(); page.render(main); } });
   el.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { S.activity = (S.activity || []).filter(a => a.id !== b.dataset.rm); save(); page.render(main); });
 }

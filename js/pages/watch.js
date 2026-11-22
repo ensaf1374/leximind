@@ -4,7 +4,7 @@
 // word can be looked up and saved exactly as on the Read page. Nothing here needs AI.
 //   #/watch        new lesson + saved lessons
 //   #/watch/<id>   a saved lesson
-import { html, raw, esc, $, ico, toast, confirmDialog, navigate } from '../lib/ui.js';
+import { html, raw, esc, $, ico, toast, confirmDialog, promptDialog, navigate } from '../lib/ui.js';
 import { S, save, uid, logActivity } from '../lib/store.js';
 import { lookup, paragraphHTML, deckIndex } from './read.js';
 
@@ -93,11 +93,21 @@ function create() {
   if (!segments.some(s => s.t != null)) toast('No times were found, so lines cannot jump the video. You can still read and look up words.', '', 6000);
   navigate('watch/' + v.id);
 }
+async function renameVideo(v) {
+  const n = await promptDialog('Rename video', { label: 'Title', value: v.title, okLabel: 'Rename' });
+  if (!n || n === v.title) return false;
+  v.title = n.slice(0, 120); save(); toast('Renamed', 'ok'); return true;
+}
+async function deleteVideo(v) {
+  if (!await confirmDialog('Delete video?', `“${v.title}” will be removed from your saved videos.`, { danger: true, okLabel: 'Delete' })) return false;
+  S.videos = S.videos.filter(x => x !== v); save(); toast('Video deleted', 'ok'); return true;
+}
 function drawSaved() {
   const el = $('#wa-saved'); if (!el) return;
   if (!S.videos.length) { el.innerHTML = '<div class="empty" style="padding:24px"><p>Videos you study are kept here so you can watch them again.</p></div>'; return; }
-  el.innerHTML = `<div class="wl">${S.videos.map(v => `<div class="wi"><img class="thumb" src="https://i.ytimg.com/vi/${esc(v.videoId)}/mqdefault.jpg" alt="" loading="lazy"><div class="t"><b>${esc(v.title)}</b><small>${new Date(v.created).toLocaleDateString()} · ${plural((v.segments || []).length, 'line')}</small></div><div class="acts"><a class="btn btn-sm" href="#/watch/${esc(v.id)}">Open</a><button class="icon-btn danger" data-del="${esc(v.id)}" title="Delete" aria-label="Delete">${ico('trash')}</button></div></div>`).join('')}</div>`;
-  el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { const v = S.videos.find(x => x.id === b.dataset.del); if (v && await confirmDialog('Delete video?', `“${v.title}” will be removed from your saved videos.`, { danger: true, okLabel: 'Delete' })) { S.videos = S.videos.filter(x => x !== v); save(); drawSaved(); } });
+  el.innerHTML = `<div class="wl">${S.videos.map(v => `<div class="wi"><img class="thumb" src="https://i.ytimg.com/vi/${esc(v.videoId)}/mqdefault.jpg" alt="" loading="lazy"><div class="t"><b>${esc(v.title)}</b><small>${new Date(v.created).toLocaleDateString()} · ${plural((v.segments || []).length, 'line')}</small></div><div class="acts"><a class="btn btn-sm" href="#/watch/${esc(v.id)}">Open</a><button class="icon-btn" data-ren="${esc(v.id)}" title="Rename" aria-label="Rename">${ico('edit')}</button><button class="icon-btn danger" data-del="${esc(v.id)}" title="Delete" aria-label="Delete">${ico('trash')}</button></div></div>`).join('')}</div>`;
+  el.querySelectorAll('[data-ren]').forEach(b => b.onclick = async () => { const v = S.videos.find(x => x.id === b.dataset.ren); if (v && await renameVideo(v)) drawSaved(); });
+  el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { const v = S.videos.find(x => x.id === b.dataset.del); if (v && await deleteVideo(v)) drawSaved(); });
 }
 
 // ── The lesson ──────────────────────────────────────────────────────────────
@@ -112,7 +122,7 @@ function lesson(main) {
   }).join('');
   const mine = [...seen.values()];
   main.innerHTML = html`
-    <div class="page-head"><div><a class="small muted" href="#/watch">← All videos</a><h1 style="margin-top:6px">${v.title}</h1></div></div>
+    <div class="page-head"><div><a class="small muted" href="#/watch">← All videos</a><h1 style="margin-top:6px" id="wa-h">${v.title}</h1></div><div class="row"><button class="btn btn-sm" id="wa-ren">${ico('edit')} Rename</button><button class="btn btn-sm btn-danger" id="wa-del">${ico('trash')} Delete</button></div></div>
     <div class="watch">
       <div class="watch-video">
         <div class="player"><div id="wa-player"></div></div>
@@ -126,6 +136,8 @@ function lesson(main) {
       </div>
       <div class="transcript reading" id="wa-text">${raw(rows)}</div>
     </div>`;
+  $('#wa-ren').onclick = async () => { if (await renameVideo(v)) $('#wa-h').textContent = v.title; };
+  $('#wa-del').onclick = async () => { if (await deleteVideo(v)) navigate('watch'); };
   const text = $('#wa-text'), rowEl = i => text.querySelector(`.seg-row[data-i="${i}"]`);
   const mark = (i, scroll) => {
     if (i === activeSeg) return; activeSeg = i;

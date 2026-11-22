@@ -3,7 +3,8 @@
 //   #/study/today      everything that is due, across all decks
 //   #/study/<deckId>   due cards of one deck (or the whole deck as practice when nothing is due)
 //   #/study/box/<1-5>  cards of one spacing stage
-import { html, raw, esc, navigate, toast, $, renderRoute, ico } from '../lib/ui.js';
+import { html, raw, esc, navigate, toast, $, renderRoute, ico, confirmDialog } from '../lib/ui.js';
+import { editCard } from './library.js';
 import { S, SETTINGS, save, today, allCards, isDue, logActivity } from '../lib/store.js';
 import { rate, preview, progress, LT } from '../lib/srs.js';
 import { enrich, aiAvailable } from '../lib/ai.js';
@@ -166,6 +167,8 @@ function draw(main) {
       ${sttSupported() ? html`<button class="btn btn-ghost btn-sm" id="t-speak">${ico('mic')} Say it</button>` : ''}
       ${aiAvailable() ? html`<button class="btn btn-ghost btn-sm" id="t-more">More examples</button>` : ''}
       ${left > 1 ? html`<button class="btn btn-ghost btn-sm" id="skip">Skip for now</button>` : ''}
+      <button class="btn btn-ghost btn-sm" id="t-edit" title="Edit this card">${ico('edit')} Edit</button>
+      <button class="btn btn-ghost btn-sm" id="t-del" title="Delete this card">${ico('trash')} Delete</button>
     </div>
     <div id="speak-out"></div>`;
 
@@ -174,6 +177,15 @@ function draw(main) {
   $('#t-say').onclick = () => speak(c.word);
   $('#t-clips')?.addEventListener('click', () => { clearInterval(timer); openClips(c.word); });
   $('#t-speak')?.addEventListener('click', () => sayIt(c));
+  const home = () => Object.values(S.decks).find(d => d.cards.includes(c));
+  $('#t-edit').onclick = () => { const d = home(); if (!d) return; clearInterval(timer); editCard(d, c, () => { if (st && current() === c) draw(main); }); };
+  $('#t-del').onclick = async () => {
+    const session = st; clearInterval(timer);
+    if (!await confirmDialog('Delete card?', `“${c.word}” and its progress will be removed from your deck.`, { danger: true, okLabel: 'Delete' })) return;
+    const d = home(); if (d) { d.cards = d.cards.filter(x => x !== c); save(); }
+    if (st !== session) return;
+    st.queue = st.queue.filter(x => x !== c); st.flipped = false; toast('Card deleted', 'ok'); draw($('#main'));
+  };
   $('#t-more')?.addEventListener('click', async e => {
     const b = e.currentTarget; b.disabled = true; b.innerHTML = '<span class="spin"></span>';
     const keep = c.context;

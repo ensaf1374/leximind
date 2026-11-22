@@ -74,12 +74,24 @@ export default {
       <div class="page-head"><div><h1>My decks</h1><p>${decks.length ? `${decks.reduce((a, d) => a + d.cards.length, 0)} cards across ${decks.length} deck${decks.length === 1 ? '' : 's'}.` : 'Decks hold your cards. Make one with AI, by hand, or borrow one from the community.'}</p></div>
       <div class="row"><a class="btn" href="#/community">Browse community</a><button class="btn btn-primary" id="lb-new">+ New deck</button></div></div>
       ${decks.length ? html`<div class="deck-list">${raw(decks.map(d => { const due = d.cards.filter(c => c.due <= today() && c.status !== 'new').length, m = d.cards.filter(c => c.status === 'mastered').length;
-        return `<div class="deck" data-id="${esc(d.id)}" role="button" tabindex="0">${due ? `<span class="chip accent due-pill">${due} due</span>` : ''}<h3>${esc(d.name)}</h3><div class="meta">${d.cards.length} cards · ${m} mastered · ${esc(d.level || '')}${d.publishedId ? ' · shared' : ''}</div><div class="bar"><i style="width:${d.cards.length ? Math.round(m / d.cards.length * 100) : 0}%"></i></div><div class="actions"><a class="btn btn-sm btn-primary" href="#/study/${esc(d.id)}" data-stop>Study</a><a class="btn btn-sm" href="#/library/${esc(d.id)}" data-stop>Open</a></div></div>`; }).join(''))}</div>`
+        return `<div class="deck" data-id="${esc(d.id)}" role="button" tabindex="0">${due ? `<span class="chip accent due-pill">${due} due</span>` : ''}<h3>${esc(d.name)}</h3><div class="meta">${d.cards.length} cards · ${m} mastered · ${esc(d.level || '')}${d.publishedId ? ' · shared' : ''}</div><div class="bar"><i style="width:${d.cards.length ? Math.round(m / d.cards.length * 100) : 0}%"></i></div><div class="actions"><a class="btn btn-sm btn-primary" href="#/study/${esc(d.id)}" data-stop>Study</a><a class="btn btn-sm" href="#/library/${esc(d.id)}" data-stop>Open</a><span style="flex:1"></span><button class="icon-btn" data-stop data-ren="${esc(d.id)}" title="Rename deck" aria-label="Rename deck"><i data-ico="edit"></i></button><button class="icon-btn danger" data-stop data-rm="${esc(d.id)}" title="Delete deck" aria-label="Delete deck"><i data-ico="trash"></i></button></div></div>`; }).join(''))}</div>`
       : html`<div class="empty"><h3>No decks yet</h3><p>Create one and let AI write the first cards, or start from a community deck.</p><button class="btn btn-primary" id="lb-new2">+ New deck</button></div>`}`;
     main.querySelectorAll('#lb-new,#lb-new2').forEach(b => b.onclick = openNewDeck);
+    main.querySelectorAll('[data-ren]').forEach(b => b.onclick = async () => { const d = S.decks[b.dataset.ren]; if (d && await renameDeck(d)) this.render(main, _ctx, []); });
+    main.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { const d = S.decks[b.dataset.rm]; if (d && await deleteDeck(d)) this.render(main, _ctx, []); });
     main.querySelectorAll('.deck').forEach(d => { d.onclick = e => { if (e.target.closest('[data-stop]')) return; navigate('library/' + d.dataset.id); }; d.onkeydown = e => { if (e.key === 'Enter') navigate('library/' + d.dataset.id); }; });
   }
 };
+
+async function renameDeck(d) {
+  const n = await promptDialog('Rename deck', { label: 'Deck name', value: d.name, okLabel: 'Rename' });
+  if (!n || n === d.name) return false;
+  d.name = n.slice(0, 80); save(); toast('Deck renamed', 'ok'); return true;
+}
+async function deleteDeck(d) {
+  if (!await confirmDialog('Delete deck?', `“${d.name}” and its ${d.cards.length} cards will be deleted permanently.${d.publishedId ? ' The copy shared with the community stays until you unpublish it.' : ''}`, { danger: true, okLabel: 'Delete deck' })) return false;
+  delete S.decks[d.id]; save(); toast('Deck deleted', 'ok'); return true;
+}
 
 function deckView(main, d) {
   let filter = 'all', sort = 'added', q = '';
@@ -90,7 +102,7 @@ function deckView(main, d) {
     cards.sort((a, b) => sort === 'alpha' ? a.word.localeCompare(b.word) : sort === 'due' ? a.due.localeCompare(b.due) : sort === 'hard' ? b.lapses - a.lapses : (b.added || '').localeCompare(a.added || ''));
     const m = d.cards.filter(c => c.status === 'mastered').length, due = d.cards.filter(c => c.due <= t && c.status !== 'new').length;
     main.innerHTML = html`
-      <div class="page-head"><div><a class="small muted" href="#/library">← My decks</a><h1 style="margin-top:6px">${d.name}</h1><p>${d.cards.length} cards · ${m} mastered · ${due} due today${d.description ? ` · ${d.description}` : ''}</p></div>
+      <div class="page-head"><div><a class="small muted" href="#/library">← My decks</a><h1 style="margin-top:6px">${d.name} <button class="icon-btn" id="dk-ren" title="Rename deck" aria-label="Rename deck" style="vertical-align:middle"><i data-ico="edit"></i></button></h1><p>${d.cards.length} cards · ${m} mastered · ${due} due today${d.description ? ` · ${d.description}` : ''}</p></div>
         <div class="row"><a class="btn btn-primary" href="#/study/${d.id}">Study</a><button class="btn" id="dk-add">+ Add word</button><button class="btn" id="dk-import">Import list</button><button class="btn" id="dk-more" ${aiAvailable() ? '' : 'disabled'}>Generate more</button><button class="btn" id="dk-menu" title="More actions" aria-label="More actions"><i data-ico="dots"></i></button></div></div>
       <div class="bar" style="margin-bottom:16px"><i style="width:${d.cards.length ? Math.round(m / d.cards.length * 100) : 0}%"></i></div>
       <div class="row between" style="margin-bottom:12px"><input type="search" id="dk-q" placeholder="Search words, meanings, Farsi…" value="${q}" style="max-width:320px">
@@ -107,11 +119,12 @@ function deckView(main, d) {
     main.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { const c = d.cards.find(x => x.id === b.dataset.del); if (await confirmDialog('Delete word?', `“${c.word}” and its progress will be removed.`, { danger: true, okLabel: 'Delete' })) { d.cards = d.cards.filter(x => x !== c); save(); draw(); } });
     $('#dk-add').onclick = () => addWord(d, draw); $('#dk-import').onclick = () => importList(d, draw); $('#dk-more').onclick = () => generateMore(d, draw);
     $('#dk-menu').onclick = () => deckMenu(d, draw);
+    $('#dk-ren').onclick = async () => { if (await renameDeck(d)) draw(); };
   };
   draw();
 }
 
-function editCard(d, c, done) {
+export function editCard(d, c, done) {
   const body = el('div', { class: 'stack' });
   body.innerHTML = `<div class="grid grid-2"><label class="field"><span>Word</span><input id="ew-word" type="text" value="${esc(c.word)}"></label><label class="field"><span>Phonetic</span><input id="ew-ph" type="text" value="${esc(c.phonetic)}"></label></div>
     <label class="field"><span>Type</span><select id="ew-type">${['noun', 'verb', 'adjective', 'adverb', 'phrase', 'idiom', 'collocation', 'word'].map(t => `<option ${c.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label>

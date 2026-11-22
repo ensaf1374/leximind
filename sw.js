@@ -1,5 +1,5 @@
 // LexiMind service worker — keeps a copy of the app for offline study. Online, files always come from the server.
-const VERSION = 'lx-v12';
+const VERSION = 'lx-v13';
 const SHELL = ['./','./index.html','./css/app.css','./js/config.js','./js/app.js',
   './js/lib/ui.js','./js/lib/store.js','./js/lib/srs.js','./js/lib/ai.js','./js/lib/supa.js','./js/lib/gamify.js','./js/lib/speech.js','./js/lib/clips.js',
   './js/pages/home.js','./js/pages/study.js','./js/pages/review.js','./js/pages/speak.js','./js/pages/read.js','./js/pages/collocations.js',

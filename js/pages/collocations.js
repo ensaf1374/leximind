@@ -1,6 +1,6 @@
 // Generate: AI writes new study material — words, collocations or whole sentences — at a chosen level,
 // and the learner adds what they like to a deck. (The file keeps its old name; the page is "#/generate".)
-import { html, raw, esc, $, toast, confirmDialog, ico } from '../lib/ui.js';
+import { html, raw, esc, $, toast, confirmDialog, promptDialog, ico } from '../lib/ui.js';
 import { S, save, uid, newCard, recordNewWords, today, logActivity } from '../lib/store.js';
 import { ask, parseJSON, aiAvailable, aiHint, LEVELS, inChunks, generateCards } from '../lib/ai.js';
 import { speak } from '../lib/speech.js';
@@ -101,9 +101,10 @@ function drawOut() {
         ${it.example ? `<div class="small" style="margin-top:3px">${esc(it.example)}</div>` : ''}
         ${it.farsi ? `<div lang="fa" class="fa" style="font-size:14.5px;margin-top:2px">${esc(it.farsi)}</div>` : ''}
       </div>
-      <div class="acts" style="align-items:center"><button class="icon-btn" data-say="${i}" title="Listen" aria-label="Listen">${ico('volume')}</button>${big ? '' : `<button class="icon-btn" data-clip="${i}" title="Hear it in real videos" aria-label="Hear it in real videos">${ico('play')}</button>`}<button class="btn btn-sm" data-add="${i}">Add</button></div></div>`).join(''))}</div>`;
+      <div class="acts" style="align-items:center"><button class="icon-btn" data-say="${i}" title="Listen" aria-label="Listen">${ico('volume')}</button>${big ? '' : `<button class="icon-btn" data-clip="${i}" title="Hear it in real videos" aria-label="Hear it in real videos">${ico('play')}</button>`}<button class="btn btn-sm" data-add="${i}">Add</button><button class="icon-btn danger" data-drop="${i}" title="Remove from this list" aria-label="Remove from this list">${ico('x')}</button></div></div>`).join(''))}</div>`;
   out.querySelectorAll('[data-say]').forEach(b => b.onclick = () => { const it = G.items[+b.dataset.say]; speak(big || !it.example ? it.text : `${it.text}. ${it.example}`); });
   out.querySelectorAll('[data-clip]').forEach(b => b.onclick = () => openClips(G.items[+b.dataset.clip].text));
+  out.querySelectorAll('[data-drop]').forEach(b => b.onclick = () => { G.items.splice(+b.dataset.drop, 1); if (G.items.length) drawOut(); else out.innerHTML = ''; });
   out.querySelectorAll('[data-add]').forEach(b => b.onclick = async () => { const d = await resolveDeck(); if (!d) return; if (addOne(d, kind, G.items[+b.dataset.add])) { b.textContent = 'Added'; b.disabled = true; } });
   $('#ge-addall').onclick = async () => {
     const d = await resolveDeck(); if (!d) return; let n = 0;
@@ -122,7 +123,8 @@ function addOne(deck, kind, it, quiet) {
 function drawSaved() {
   const el = $('#ge-saved'); if (!el) return;
   if (!S.collocSets.length) { el.innerHTML = '<div class="empty" style="padding:24px"><p>Generate a set and save it to come back to it later.</p></div>'; return; }
-  el.innerHTML = `<div class="wl">${S.collocSets.map((s, i) => { const k = KINDS[s.kind] ? s.kind : 'colloc'; return `<div class="wi"><div class="t"><b>${esc(s.title)}</b><small>${plural((s.items || []).length, k)} · ${esc(s.date)}</small></div><div class="acts"><button class="btn btn-sm" data-open="${i}">Open</button><button class="icon-btn danger" data-del="${i}" title="Delete" aria-label="Delete">${ico('trash')}</button></div></div>`; }).join('')}</div>`;
+  el.innerHTML = `<div class="wl">${S.collocSets.map((s, i) => { const k = KINDS[s.kind] ? s.kind : 'colloc'; return `<div class="wi"><div class="t"><b>${esc(s.title)}</b><small>${plural((s.items || []).length, k)} · ${esc(s.date)}</small></div><div class="acts"><button class="btn btn-sm" data-open="${i}">Open</button><button class="icon-btn" data-ren="${i}" title="Rename" aria-label="Rename">${ico('edit')}</button><button class="icon-btn danger" data-del="${i}" title="Delete" aria-label="Delete">${ico('trash')}</button></div></div>`; }).join('')}</div>`;
+  el.querySelectorAll('[data-ren]').forEach(b => b.onclick = async () => { const s = S.collocSets[+b.dataset.ren]; const n = await promptDialog('Rename set', { label: 'Name', value: s.title, okLabel: 'Rename' }); if (n && n !== s.title) { s.title = n.slice(0, 120); save(); toast('Renamed', 'ok'); drawSaved(); } });
   el.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { const s = S.collocSets[+b.dataset.open]; G.items = (s.items || []).map(tidy).filter(x => x.text); G.itemsKind = KINDS[s.kind] ? s.kind : 'colloc'; G.title = s.title; drawOut(); $('#ge-out').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { const s = S.collocSets[+b.dataset.del]; if (await confirmDialog('Delete set?', `“${s.title}” will be removed.`, { danger: true, okLabel: 'Delete' })) { S.collocSets = S.collocSets.filter(x => x !== s); save(); drawSaved(); } });
 }
